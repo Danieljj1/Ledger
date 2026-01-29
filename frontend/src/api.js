@@ -20,7 +20,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor (handle expired tokens)
@@ -29,13 +29,12 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // If token expired, logout and redirect to login
-    if (error.response && error.response.status === 401) {
-      logout();
-      window.location.href = "/";
-    }
+    // if (error.response && error.response.status === 401) {
+    //   logout();
+    //   window.location.href = '/';
+    // }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
