@@ -16,7 +16,7 @@ function Login({ switchToRegister }) {
 
     try {
       await login(username, password);
-      window.location.href = "/dashboard"; // Force full page reload
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.detail || "Login failed. Please try again.");
     } finally {
