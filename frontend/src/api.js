@@ -29,10 +29,10 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // if (error.response && error.response.status === 401) {
-    //   logout();
-    //   window.location.href = '/';
-    // }
+    if (error.response && error.response.status === 401) {
+      logout();
+      window.location.href = "/";
+    }
     return Promise.reject(error);
   },
 );
