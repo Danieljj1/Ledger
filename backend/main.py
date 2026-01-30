@@ -34,7 +34,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://ledger-frontend-koz5.onrender.com"
+        "https://ledger-frontend-f452.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
