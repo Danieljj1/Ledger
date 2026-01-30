@@ -2,7 +2,7 @@ import axios from "axios";
 import { getToken, logout } from "./authService";
 
 // Use environment variable for API URL, fallback to localhost
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+const API_URL = "https://ledger-rppg.onrender.com/api";
 
 // Create axios instance with base URL
 const api = axios.create({
