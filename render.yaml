@@ -2,7 +2,6 @@ services:
   - type: web
     name: ledger-backend
     env: python
-    region: oregon
     plan: free
     buildCommand: pip install -r backend/requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -15,7 +14,6 @@ services:
   - type: web
     name: ledger-frontend
     env: static
-    region: oregon
     plan: free
     buildCommand: cd frontend && npm install && DISABLE_ESLINT_PLUGIN=true npm run build
     staticPublishPath: frontend/build
