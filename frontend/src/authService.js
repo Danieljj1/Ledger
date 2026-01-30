@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/auth";
+const API_URL = "https://ledger-rppg.onrender.com/api/auth";
 
 // Register a new user
 export const register = async (email, username, password) => {
