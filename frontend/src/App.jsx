@@ -14,6 +14,9 @@ import Dashboard from "./pages/Dashboard";
 import AccountDetail from "./pages/AccountDetail";
 import AccountsManage from "./pages/AccountsManage";
 import Categories from "./pages/Categories";
+import Charts from "./pages/Charts";
+import AIAdvisor from "./pages/AIAdvisor";
+import Budgets from "./pages/Budgets";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -121,6 +124,36 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Categories />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/charts"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Charts />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/budgets"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Budgets />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-advisor"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIAdvisor />
               </Layout>
             </ProtectedRoute>
           }

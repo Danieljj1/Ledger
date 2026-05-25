@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import transactions, categories, accounts, auth
+from app.routes import transactions, categories, accounts, auth, ai_advisor, budgets
 from database import engine, SessionLocal
 import db_models 
 
@@ -45,6 +45,8 @@ app.include_router(transactions.router, prefix="/api", tags=["transactions"])
 app.include_router(categories.router, prefix="/api", tags=["categories"])
 app.include_router(accounts.router, prefix="/api", tags=["accounts"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(ai_advisor.router, prefix="/api", tags=["ai-advisor"])
+app.include_router(budgets.router, prefix="/api", tags=["budgets"])
 
 @app.get("/")
 def root():

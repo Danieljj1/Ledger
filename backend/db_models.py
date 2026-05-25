@@ -13,6 +13,7 @@ class User(Base):
     
     # Relationships
     accounts = relationship("Account", back_populates="user")
+
 class Account(Base):
     __tablename__ = "accounts"
     
@@ -44,3 +45,15 @@ class Category(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
+
+class Budget(Base):
+    __tablename__ = "budgets"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    category = Column(String, nullable=False)
+    monthly_limit = Column(Float, nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    
+    user = relationship("User")
