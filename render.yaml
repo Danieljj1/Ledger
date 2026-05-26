@@ -8,7 +8,9 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY
-        value: d618ee715c4b523f6bf4c5c7f1057e5a2500dc80fe72dbd01e702e6a2026c478
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
 
   - type: web
     name: ledger-frontend
