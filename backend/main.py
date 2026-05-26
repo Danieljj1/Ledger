@@ -1,15 +1,14 @@
-from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import transactions, categories, accounts, auth, ai_advisor, budgets
 from database import engine, SessionLocal
-import db_models 
+import db_models
 
-db_models.Base.metadata.create_all(bind=engine)
 
 def init_db():
     db = SessionLocal()
     try:
-        # Only create default categories (categories are shared by all users)
         category_count = db.query(db_models.Category).count()
         if category_count == 0:
             default_categories = [
@@ -25,10 +24,15 @@ def init_db():
     finally:
         db.close()
 
-# Call when app starts
-init_db()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db_models.Base.metadata.create_all(bind=engine)
+    init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +51,7 @@ app.include_router(accounts.router, prefix="/api", tags=["accounts"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(ai_advisor.router, prefix="/api", tags=["ai-advisor"])
 app.include_router(budgets.router, prefix="/api", tags=["budgets"])
+
 
 @app.get("/")
 def root():
