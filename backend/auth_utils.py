@@ -1,14 +1,13 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-# Secret key for JWT
-SECRET_KEY = "d618ee715c4b523f6bf4c5c7f1057e5a2500dc80fe72dbd01e702e6a2026c478"
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-dev-key-change-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
