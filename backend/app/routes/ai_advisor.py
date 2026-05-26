@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from openai import OpenAI
 from database import get_db
@@ -7,14 +7,15 @@ from app.routes.auth import get_current_user
 import os
 
 router = APIRouter()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 @router.get("/ai-advisor")
 def get_ai_advice(
     db: Session = Depends(get_db),
     current_user: db_models.User = Depends(get_current_user)
 ):
-    # Gather all user transactions across all accounts
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
     accounts = db.query(db_models.Account).filter(
         db_models.Account.user_id == current_user.id
     ).all()
@@ -32,7 +33,6 @@ def get_ai_advice(
     if not all_txns:
         return {"advice": "No transactions yet. Start logging your income and expenses to get AI-powered financial insights!", "summary": {}}
 
-    # Build spending summary by category
     category_spending = {}
     total_income = 0
     total_expenses = 0
@@ -51,7 +51,6 @@ def get_ai_advice(
         "transaction_count": len(all_txns)
     }
 
-    # Build prompt
     spending_lines = "\n".join([f"  - {cat}: ${amt}" for cat, amt in summary["spending_by_category"].items()])
     prompt = f"""You are a personal finance advisor. Analyze this user's financial data and give 3-5 specific, actionable tips.
 
