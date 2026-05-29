@@ -1,6 +1,34 @@
 import { useState, useEffect } from "react";
 import api from "../api";
 
+const DATE_FILTERS = [
+  { value: "all", label: "All Time" },
+  { value: "this-month", label: "This Month" },
+  { value: "last-month", label: "Last Month" },
+  { value: "this-year", label: "This Year" },
+];
+
+function getDateRange(filterType) {
+  const today = new Date();
+  if (filterType === "all") return { start_date: null, end_date: null };
+  if (filterType === "this-month") {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { start_date: first.toISOString().split("T")[0], end_date: last.toISOString().split("T")[0] };
+  }
+  if (filterType === "last-month") {
+    const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const last = new Date(today.getFullYear(), today.getMonth(), 0);
+    return { start_date: first.toISOString().split("T")[0], end_date: last.toISOString().split("T")[0] };
+  }
+  if (filterType === "this-year") {
+    const first = new Date(today.getFullYear(), 0, 1);
+    const last = new Date(today.getFullYear(), 11, 31);
+    return { start_date: first.toISOString().split("T")[0], end_date: last.toISOString().split("T")[0] };
+  }
+  return { start_date: null, end_date: null };
+}
+
 function Transactions({ accounts, onTransactionChange }) {
   const [transactions, setTransactions] = useState([]);
   const [description, setDescription] = useState("");
@@ -8,6 +36,7 @@ function Transactions({ accounts, onTransactionChange }) {
   const [type, setType] = useState("expense");
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editDescription, setEditDescription] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -15,23 +44,15 @@ function Transactions({ accounts, onTransactionChange }) {
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState("General");
   const [editCategory, setEditCategory] = useState("General");
-  const [summary, setSummary] = useState({
-    income: 0,
-    expense: 0,
-    net: 0,
-    count: 0,
-  });
+  const [summary, setSummary] = useState({ income: 0, expense: 0, net: 0, count: 0 });
   const [dateFilter, setDateFilter] = useState("all");
 
   useEffect(() => {
-    console.log("Accounts changed:", accounts);
-    console.log("Current selectedAccount:", selectedAccount);
     if (accounts.length > 0 && selectedAccount === null) {
       setSelectedAccount(accounts[0].id);
     }
   }, [accounts]);
 
-  // Fetch transactions when component loads
   useEffect(() => {
     if (selectedAccount !== null) {
       fetchTransactions();
@@ -40,21 +61,20 @@ function Transactions({ accounts, onTransactionChange }) {
     }
   }, [selectedAccount, dateFilter]);
 
+  const buildUrl = (base) => {
+    const { start_date, end_date } = getDateRange(dateFilter);
+    let url = `${base}?account_id=${selectedAccount}`;
+    if (start_date && end_date) url += `&start_date=${start_date}&end_date=${end_date}`;
+    return url;
+  };
+
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const { start_date, end_date } = getDateRange(dateFilter);
-
-      let url = `http://localhost:8000/api/transactions?account_id=${selectedAccount}`;
-
-      if (start_date && end_date) {
-        url += `&start_date=${start_date}&end_date=${end_date}`;
-      }
-
-      const response = await api.get(url);
-      setTransactions(response.data);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
+      const res = await api.get(buildUrl("http://localhost:8000/api/transactions"));
+      setTransactions(res.data);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -62,529 +82,301 @@ function Transactions({ accounts, onTransactionChange }) {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get("/categories");
-      setCategories(response.data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+      const res = await api.get("/categories");
+      setCategories(res.data);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   const fetchSummary = async () => {
     try {
-      const { start_date, end_date } = getDateRange(dateFilter);
-
-      let url = `http://localhost:8000/api/transactions/summary?account_id=${selectedAccount}`;
-
-      if (start_date && end_date) {
-        url += `&start_date=${start_date}&end_date=${end_date}`;
-      }
-
-      const response = await api.get(url);
-      setSummary(response.data);
-    } catch (error) {
-      console.error("Error fetching summary:", error);
+      const res = await api.get(buildUrl("http://localhost:8000/api/transactions/summary"));
+      setSummary(res.data);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const calculateSummary = (transactionsList) => {
-    const income = transactionsList
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const expense = transactionsList
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    return {
-      income: income,
-      expense: expense,
-      net: income - expense,
-      count: transactionsList.length,
-    };
-  };
-
-  const handleAddTransaction = async () => {
+  const handleAddTransaction = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
     try {
-      const newTransaction = {
-        description: description,
+      await api.post(`/transactions?account_id=${selectedAccount}`, {
+        description,
         amount: parseFloat(amount),
-        type: type,
-        date: new Date().toISOString().split("T")[0], // Today's date
-        category: category,
-      };
-
-      await api.post(
-        `/transactions?account_id=${selectedAccount}`,
-        newTransaction
-      );
-
-      // Refresh the list
+        type,
+        date: new Date().toISOString().split("T")[0],
+        category,
+      });
       fetchTransactions();
       fetchSummary();
       onTransactionChange();
-
-      // Clear the form
       setDescription("");
       setAmount("");
       setType("expense");
-      setCategory("General"); // Reset category to default
-    } catch (error) {
-      console.error("Error adding transaction:", error);
-      alert("Failed to add transaction");
+      setCategory("General");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDeleteTransaction = async (transactionId) => {
-    if (!window.confirm("Are you sure you want to delete this transaction?")) {
-      return;
-    }
-
+  const handleDeleteTransaction = async (id) => {
+    if (!window.confirm("Delete this transaction?")) return;
     try {
-      await api.delete(`/transactions/${transactionId}`);
+      await api.delete(`/transactions/${id}`);
       fetchTransactions();
       fetchSummary();
       onTransactionChange();
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-      alert("Failed to delete transaction");
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const getDateRange = (filterType) => {
-    const today = new Date();
-
-    if (filterType === "all") {
-      return { start_date: null, end_date: null };
-    }
-
-    if (filterType === "this-month") {
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      return {
-        start_date: firstDay.toISOString().split("T")[0],
-        end_date: lastDay.toISOString().split("T")[0],
-      };
-    }
-
-    if (filterType === "last-month") {
-      const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-      return {
-        start_date: firstDay.toISOString().split("T")[0],
-        end_date: lastDay.toISOString().split("T")[0],
-      };
-    }
-
-    if (filterType === "this-year") {
-      const firstDay = new Date(today.getFullYear(), 0, 1);
-      const lastDay = new Date(today.getFullYear(), 11, 31);
-      return {
-        start_date: firstDay.toISOString().split("T")[0],
-        end_date: lastDay.toISOString().split("T")[0],
-      };
-    }
-
-    return { start_date: null, end_date: null };
-  };
-  const handleEditClick = (transaction) => {
-    setEditingId(transaction.id);
-    setEditDescription(transaction.description);
-    setEditAmount(transaction.amount.toString());
-    setEditType(transaction.type);
-    setEditCategory(transaction.category);
+  const handleEditClick = (t) => {
+    setEditingId(t.id);
+    setEditDescription(t.description);
+    setEditAmount(t.amount.toString());
+    setEditType(t.type);
+    setEditCategory(t.category);
   };
 
   const handleSaveEdit = async () => {
     try {
-      const updatedData = {
+      await api.put(`/transactions/${editingId}`, {
         description: editDescription,
         amount: parseFloat(editAmount),
         type: editType,
         category: editCategory,
-      };
-
-      await api.put(`/transactions/${editingId}`, updatedData);
-
+      });
       fetchTransactions();
       fetchSummary();
       onTransactionChange();
-
-      // Clear editing state
       setEditingId(null);
-      setEditDescription("");
-      setEditAmount("");
-      setEditType("expense");
-      setEditCategory("General");
-    } catch (error) {
-      console.error("Error updating transaction:", error);
-      alert("Failed to update transaction");
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditDescription("");
-    setEditAmount("");
-    setEditType("expense");
-    setEditCategory("General");
-  };
+  const handleCancelEdit = () => setEditingId(null);
 
-  if (loading) {
-    return <div>Loading transactions...</div>;
+  const inputClass = "w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-colors bg-white";
+  const selectClass = "px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-colors bg-white";
+
+  if (loading && transactions.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-sm text-slate-500">Loading transactions...</div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h1>Transactions</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Transactions</h1>
+        <p className="text-slate-500 mt-1 text-sm">Track and manage your income and expenses.</p>
+      </div>
 
-      <div style={{ marginBottom: "20px" }}>
-        <h2>Select Account:</h2>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+      {/* Account Tabs */}
+      {accounts.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-6">
           {accounts.map((account) => (
             <button
               key={account.id}
               onClick={() => setSelectedAccount(account.id)}
-              style={{
-                padding: "10px 20px",
-                backgroundColor:
-                  selectedAccount === account.id ? "blue" : "lightgray",
-                color: selectedAccount === account.id ? "white" : "black",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: "5px",
-              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedAccount === account.id
+                  ? "bg-navy-800 text-white"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
             >
               {account.name}
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Date Filter Buttons */}
-      <div style={{ marginBottom: "20px" }}>
-        <h2>Date Range:</h2>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button
-            onClick={() => setDateFilter("all")}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: dateFilter === "all" ? "purple" : "lightgray",
-              color: dateFilter === "all" ? "white" : "black",
-              border: "none",
-              cursor: "pointer",
-              borderRadius: "5px",
-            }}
-          >
-            All Time
-          </button>
-          <button
-            onClick={() => setDateFilter("this-month")}
-            style={{
-              padding: "10px 20px",
-              backgroundColor:
-                dateFilter === "this-month" ? "purple" : "lightgray",
-              color: dateFilter === "this-month" ? "white" : "black",
-              border: "none",
-              cursor: "pointer",
-              borderRadius: "5px",
-            }}
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => setDateFilter("last-month")}
-            style={{
-              padding: "10px 20px",
-              backgroundColor:
-                dateFilter === "last-month" ? "purple" : "lightgray",
-              color: dateFilter === "last-month" ? "white" : "black",
-              border: "none",
-              cursor: "pointer",
-              borderRadius: "5px",
-            }}
-          >
-            Last Month
-          </button>
-          <button
-            onClick={() => setDateFilter("this-year")}
-            style={{
-              padding: "10px 20px",
-              backgroundColor:
-                dateFilter === "this-year" ? "purple" : "lightgray",
-              color: dateFilter === "this-year" ? "white" : "black",
-              border: "none",
-              cursor: "pointer",
-              borderRadius: "5px",
-            }}
-          >
-            This Year
-          </button>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Income</div>
+          <div className="text-xl font-bold text-gold-500">+${summary.income.toFixed(2)}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Expenses</div>
+          <div className="text-xl font-bold text-red-500">-${summary.expense.toFixed(2)}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Net</div>
+          <div className={`text-xl font-bold ${summary.net >= 0 ? "text-gold-500" : "text-red-500"}`}>
+            {summary.net >= 0 ? "+" : ""}${summary.net.toFixed(2)}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Count</div>
+          <div className="text-xl font-bold text-slate-900">{summary.count}</div>
         </div>
       </div>
 
-      {/* Summary Box */}
-      <div
-        style={{
-          border: "2px solid green",
-          padding: "20px",
-          marginBottom: "20px",
-          backgroundColor: "lightgreen",
-          borderRadius: "8px",
-        }}
-      >
-        <h2>Account Summary</h2>
-        <div style={{ display: "flex", gap: "30px", marginTop: "10px" }}>
-          <div>
-            <p style={{ margin: "5px 0", fontSize: "14px", color: "gray" }}>
-              Total Income
-            </p>
-            <p
-              style={{
-                margin: "0",
-                fontSize: "24px",
-                fontWeight: "bold",
-                color: "green",
-              }}
-            >
-              ${summary.income.toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p style={{ margin: "5px 0", fontSize: "14px", color: "gray" }}>
-              Total Expenses
-            </p>
-            <p
-              style={{
-                margin: "0",
-                fontSize: "24px",
-                fontWeight: "bold",
-                color: "red",
-              }}
-            >
-              ${summary.expense.toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p style={{ margin: "5px 0", fontSize: "14px", color: "gray" }}>
-              Net Balance
-            </p>
-            <p
-              style={{
-                margin: "0",
-                fontSize: "24px",
-                fontWeight: "bold",
-                color: summary.net >= 0 ? "green" : "red",
-              }}
-            >
-              ${summary.net.toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p style={{ margin: "5px 0", fontSize: "14px", color: "gray" }}>
-              Transactions
-            </p>
-            <p style={{ margin: "0", fontSize: "24px", fontWeight: "bold" }}>
-              {summary.count}
-            </p>
-          </div>
-        </div>
+      {/* Date Filter */}
+      <div className="flex gap-2 flex-wrap mb-6">
+        {DATE_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setDateFilter(f.value)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateFilter === f.value
+                ? "bg-gold-500 text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
-      <div
-        style={{
-          border: "2px solid black",
-          padding: "15px",
-          marginBottom: "20px",
-        }}
-      >
-        <h2>Add New Transaction</h2>
-
-        <div>
-          <label>Description: </label>
+      {/* Add Transaction */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6 shadow-sm">
+        <h2 className="text-base font-semibold text-slate-900 mb-5">Add Transaction</h2>
+        <form onSubmit={handleAddTransaction} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description"
+            required
+            className={inputClass + " lg:col-span-2"}
           />
-        </div>
-
-        <div style={{ marginTop: "10px" }}>
-          <label>Amount: </label>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            placeholder="Amount"
+            step="0.01"
+            required
+            className={inputClass}
           />
-        </div>
-
-        <div style={{ marginTop: "10px" }}>
-          <label>Type: </label>
-          <select value={type} onChange={(e) => setType(e.target.value)}>
+          <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
             <option value="expense">Expense</option>
             <option value="income">Income</option>
           </select>
-        </div>
-
-        <div style={{ marginTop: "10px" }}>
-          <label>Category: </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectClass}>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name}
-              </option>
+              <option key={cat.id} value={cat.name}>{cat.name}</option>
             ))}
           </select>
-        </div>
-
-        <button onClick={handleAddTransaction} style={{ marginTop: "10px" }}>
-          Add Transaction
-        </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="sm:col-span-2 lg:col-span-1 px-5 py-2.5 bg-gold-500 hover:bg-gold-600 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-60"
+          >
+            {submitting ? "Adding..." : "Add"}
+          </button>
+        </form>
       </div>
 
+      {/* Transaction List */}
       {transactions.length === 0 ? (
-        <p>No transactions yet. Add your first one!</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-10 text-center shadow-sm">
+          <div className="text-3xl mb-3">💸</div>
+          <p className="text-slate-500 text-sm">No transactions yet. Add your first one above.</p>
+        </div>
       ) : (
-        transactions.map((transaction) => (
-          <div
-            key={transaction.id}
-            style={{
-              border: "1px solid gray",
-              padding: "10px",
-              margin: "10px 0",
-              backgroundColor: "lightblue",
-            }}
-          >
-            {editingId === transaction.id ? (
-              // EDIT MODE - Show the edit form
-              <div>
-                <h3>Editing Transaction</h3>
-
-                <div style={{ marginTop: "10px" }}>
-                  <label>Description: </label>
-                  <input
-                    type="text"
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                  />
-                </div>
-
-                <div style={{ marginTop: "10px" }}>
-                  <label>Category: </label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.name}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginTop: "10px" }}>
-                  <label>Amount: </label>
-                  <input
-                    type="number"
-                    value={editAmount}
-                    onChange={(e) => setEditAmount(e.target.value)}
-                  />
-                </div>
-
-                <div style={{ marginTop: "10px" }}>
-                  <label>Type: </label>
-                  <select
-                    value={editType}
-                    onChange={(e) => setEditType(e.target.value)}
-                  >
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
-                  </select>
-                </div>
-
-                <div style={{ marginTop: "10px" }}>
-                  <button
-                    onClick={handleSaveEdit}
-                    style={{
-                      backgroundColor: "green",
-                      color: "white",
-                      border: "none",
-                      padding: "10px 20px",
-                      cursor: "pointer",
-                      borderRadius: "5px",
-                      marginRight: "10px",
-                    }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    style={{
-                      backgroundColor: "gray",
-                      color: "white",
-                      border: "none",
-                      padding: "10px 20px",
-                      cursor: "pointer",
-                      borderRadius: "5px",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="divide-y divide-slate-100">
+            {transactions.map((t) => (
+              <div key={t.id} className="px-5 py-4">
+                {editingId === t.id ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className={inputClass}
+                      placeholder="Description"
+                    />
+                    <input
+                      type="number"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className={inputClass}
+                      placeholder="Amount"
+                    />
+                    <select value={editType} onChange={(e) => setEditType(e.target.value)} className={selectClass}>
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                    </select>
+                    <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className={selectClass}>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                    <div className="sm:col-span-2 lg:col-span-4 flex gap-2 pt-1">
+                      <button onClick={handleSaveEdit} className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white font-medium rounded-lg text-sm transition-colors">
+                        Save
+                      </button>
+                      <button onClick={handleCancelEdit} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        t.type === "income" ? "bg-gold-500/10" : "bg-red-50"
+                      }`}>
+                        {t.type === "income" ? (
+                          <svg className="w-3.5 h-3.5 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-slate-900 text-sm truncate">{t.description}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {t.category} &middot; {t.date}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className={`font-semibold text-sm ${t.type === "income" ? "text-gold-500" : "text-red-500"}`}>
+                        {t.type === "income" ? "+" : "-"}${parseFloat(t.amount).toFixed(2)}
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleEditClick(t)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTransaction(t.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              // NORMAL MODE - Show the transaction info
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <h3>{transaction.description}</h3>
-                  <p>Amount: ${transaction.amount}</p>
-                  <p>Type: {transaction.type}</p>
-                  <p>Category: {transaction.category}</p>
-                  <p>Date: {transaction.date}</p>
-                </div>
-
-                <div>
-                  <button
-                    onClick={() => handleEditClick(transaction)}
-                    style={{
-                      backgroundColor: "blue",
-                      color: "white",
-                      border: "none",
-                      padding: "10px 20px",
-                      cursor: "pointer",
-                      borderRadius: "5px",
-                      marginRight: "10px",
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTransaction(transaction.id)}
-                    style={{
-                      backgroundColor: "red",
-                      color: "white",
-                      border: "none",
-                      padding: "10px 20px",
-                      cursor: "pointer",
-                      borderRadius: "5px",
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
+            ))}
           </div>
-        ))
+        </div>
       )}
     </div>
   );

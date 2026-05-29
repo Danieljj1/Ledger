@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { register, login } from "../authService";
 
-function Register({ switchToLogin }) {
+function Register() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -15,179 +15,86 @@ function Register({ switchToLogin }) {
     e.preventDefault();
     setError("");
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-
-    // Validate password length
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
     setLoading(true);
-
     try {
-      // Register the user
       await register(email, username, password);
-
-      // Automatically log them in after registration
       await login(username, password);
-
-      navigate("/dashboard"); // Redirect to dashboard on successful registration
+      navigate("/dashboard");
     } catch (err) {
-      setError(
-        err.response?.data?.detail || "Registration failed. Please try again."
-      );
+      setError(err.response?.data?.detail || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass = "w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-colors";
+  const labelClass = "block text-sm font-medium text-slate-700 mb-1.5";
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Register</h2>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <div className="text-2xl font-bold text-slate-900 tracking-tight">Ledger</div>
+          <p className="text-sm text-slate-500 mt-1">Create your account</p>
+        </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="Enter your email"
-            />
-          </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className={labelClass}>Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Enter your email" className={inputClass} />
+            </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="Choose a username"
-            />
-          </div>
+            <div>
+              <label className={labelClass}>Username</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="Choose a username" className={inputClass} />
+            </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="Choose a password"
-            />
-          </div>
+            <div>
+              <label className={labelClass}>Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Choose a password" className={inputClass} />
+            </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="Confirm your password"
-            />
-          </div>
+            <div>
+              <label className={labelClass}>Confirm Password</label>
+              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="Confirm your password" className={inputClass} />
+            </div>
 
-          {error && <div style={styles.error}>{error}</div>}
+            {error && (
+              <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+                {error}
+              </div>
+            )}
 
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Creating account..." : "Register"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-gold-500 hover:bg-gold-600 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-60"
+            >
+              {loading ? "Creating account..." : "Create account"}
+            </button>
+          </form>
 
-        <div style={styles.footer}>
-          Already have an account?{" "}
-          <Link to="/login" style={styles.link}>
-            Login
-          </Link>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Already have an account?{" "}
+            <Link to="/login" className="text-gold-500 hover:text-gold-600 font-medium">
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "100vh",
-    backgroundColor: "#f5f5f5",
-  },
-  card: {
-    backgroundColor: "white",
-    padding: "40px",
-    borderRadius: "8px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-    width: "100%",
-    maxWidth: "400px",
-  },
-  title: {
-    marginTop: 0,
-    marginBottom: "30px",
-    textAlign: "center",
-    color: "#1a2332",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  },
-  inputGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-  label: {
-    fontWeight: "500",
-    color: "#1a2332",
-  },
-  input: {
-    padding: "12px",
-    border: "2px solid #ddd",
-    borderRadius: "4px",
-    fontSize: "14px",
-  },
-  button: {
-    padding: "12px",
-    background: "linear-gradient(135deg, #d4af37 0%, #b8941f 100%)",
-    color: "#1a2332",
-    border: "none",
-    borderRadius: "4px",
-    fontSize: "16px",
-    fontWeight: "600",
-    cursor: "pointer",
-    marginTop: "10px",
-  },
-  error: {
-    padding: "12px",
-    backgroundColor: "#fee",
-    color: "#c33",
-    borderRadius: "4px",
-    fontSize: "14px",
-  },
-  footer: {
-    marginTop: "20px",
-    textAlign: "center",
-    color: "#666",
-  },
-  link: {
-    color: "#d4af37",
-    textDecoration: "underline",
-    cursor: "pointer",
-  },
-};
 
 export default Register;

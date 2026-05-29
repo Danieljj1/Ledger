@@ -102,72 +102,50 @@ function Dashboard() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold text-navy-800 mb-2">Dashboard</h1>
-        <p className="text-gray-600">
-          Welcome back! Here's your financial overview.
-        </p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+        <p className="text-slate-500 mt-1 text-sm">Your financial overview at a glance.</p>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
-            Total Balance
-          </div>
-          <div className="text-3xl font-bold text-navy-800">
-            ${totalBalance.toFixed(2)}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Total Balance</div>
+          <div className="text-2xl font-bold text-slate-900">${totalBalance.toFixed(2)}</div>
         </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
-            This Month Income
-          </div>
-          <div className="text-3xl font-bold text-green-500">
-            +${thisMonthIncome.toFixed(2)}
-          </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">This Month Income</div>
+          <div className="text-2xl font-bold text-gold-500">+${thisMonthIncome.toFixed(2)}</div>
         </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
-            This Month Expenses
-          </div>
-          <div className="text-3xl font-bold text-red-500">
-            -${thisMonthExpenses.toFixed(2)}
-          </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">This Month Expenses</div>
+          <div className="text-2xl font-bold text-red-500">-${thisMonthExpenses.toFixed(2)}</div>
         </div>
       </div>
 
       {/* My Accounts */}
-      <h2 className="text-2xl font-semibold text-navy-800 mb-5">My Accounts</h2>
+      <h2 className="text-base font-semibold text-slate-900 mb-4">My Accounts</h2>
       {accounts.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 shadow-sm text-center">
-          <p className="text-gray-500 mb-4">
-            No accounts yet. Create your first account!
-          </p>
+        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm text-center mb-8">
+          <p className="text-slate-500 text-sm mb-4">No accounts yet. Create your first account.</p>
           <button
             onClick={() => navigate("/accounts")}
-            className="px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-navy-800 font-semibold rounded-lg hover:shadow-lg transition-all"
+            className="px-5 py-2.5 bg-gold-500 hover:bg-gold-600 text-white font-semibold rounded-lg text-sm transition-colors"
           >
-            Create Account
+            Add Account
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {accounts.map((account) => (
             <div
               key={account.id}
               onClick={() => navigate(`/account/${account.id}`)}
-              className="bg-white rounded-xl p-6 shadow-sm cursor-pointer transition-all hover:shadow-md hover:border-2 hover:border-gold-500 border-2 border-transparent"
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm cursor-pointer transition-all hover:border-gold-500 hover:shadow-md"
             >
-              <div className="text-lg font-semibold text-navy-800 mb-2">
-                {account.name}
-              </div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-4">
-                {account.type}
-              </div>
-              <div className="text-3xl font-bold text-gold-500">
+              <div className="font-semibold text-slate-900 text-sm mb-1">{account.name}</div>
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-4">{account.type}</div>
+              <div className="text-2xl font-bold text-gold-500">
                 ${parseFloat(account.balance || 0).toFixed(2)}
               </div>
             </div>
@@ -177,10 +155,8 @@ function Dashboard() {
 
       {/* Overall Spending Chart */}
       {categoryData.length > 0 && (
-        <div className="bg-white rounded-xl p-8 shadow-sm">
-          <h2 className="text-2xl font-semibold text-navy-800 mb-6">
-            Overall Spending by Category
-          </h2>
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900 mb-6">Spending by Category</h2>
           <ResponsiveContainer width="100%" height={400}>
             <PieChart>
               <Pie
