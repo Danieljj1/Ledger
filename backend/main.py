@@ -1,24 +1,34 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from alembic.config import Config
+from alembic import command
 from app.routes import transactions, categories, accounts, auth, ai_advisor, budgets
-from database import engine, SessionLocal
+from database import SessionLocal
 import db_models
+import os
 
 
-def init_db():
+def run_migrations():
+    if os.getenv("TESTING"):
+        return
+    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
+
+
+def seed_categories():
+    if os.getenv("TESTING"):
+        return
     db = SessionLocal()
     try:
-        category_count = db.query(db_models.Category).count()
-        if category_count == 0:
-            default_categories = [
+        if db.query(db_models.Category).count() == 0:
+            db.add_all([
                 db_models.Category(name="Groceries"),
                 db_models.Category(name="Entertainment"),
                 db_models.Category(name="Bills"),
                 db_models.Category(name="Salary"),
                 db_models.Category(name="General"),
-            ]
-            db.add_all(default_categories)
+            ])
             db.commit()
             print("✓ Default categories created")
     finally:
@@ -27,8 +37,8 @@ def init_db():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_models.Base.metadata.create_all(bind=engine)
-    init_db()
+    run_migrations()
+    seed_categories()
     yield
 
 
